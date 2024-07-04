@@ -41,13 +41,13 @@ for f in os.listdir(slash_command_directory):
 		bot.load_extension("commands." + f[:-3])
 
 ''' проверка доступных тестовых команд '''
-''' '''
+''' 
 command_directory = os.path.abspath('./test_commands')
 print("Тестовые команды:")
 for f in os.listdir(command_directory):
 	if f.endswith(".py"):
 		print(f)
 		bot.load_extension("test_commands." + f[:-3])
-
+'''
 token = ""
 bot.run(token)
