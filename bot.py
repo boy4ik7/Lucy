@@ -49,8 +49,5 @@ for f in os.listdir(command_directory):
 		print(f)
 		bot.load_extension("test_commands." + f[:-3])
 
-# Lucy
-stabile_token = ""
-# Lucy TESTING
-testing_token = ""
-bot.run(stabile_token)
+token = ""
+bot.run(token)
