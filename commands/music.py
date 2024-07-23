@@ -1,4 +1,4 @@
-from mafic import NodePool, Player, Playlist, Track, TrackEndEvent, TrackStartEvent, errors, CPUStats, MemoryStats
+from mafic import NodePool, Player, Playlist, Track, TrackEndEvent, TrackStartEvent, errors, CPUStats, MemoryStats, Timescale, Filter, LowPass
 import nextcord
 from nextcord import Interaction, SlashOption
 from nextcord.ext import commands, application_checks
@@ -6,7 +6,7 @@ import asyncio
 
 # 09.06.2024
 # V1.0
-
+LOW = True
 TESTING_GUILD_ID = 1089166037934669966 # Lucy BOT
 node_pools = {}       
 
@@ -148,6 +148,12 @@ class music(commands.Cog):
             if not interaction.guild.voice_client: 
                 player = await voice_state.channel.connect(cls=Player)
                 await player.guild.change_voice_state(channel=voice_state.channel, self_deaf=True)
+                if LOW is True:
+                    filter = Filter(#timescale = Timescale(speed = 1.0, pitch=1.0, rate=1.0),
+                                volume=0.5,
+                                low_pass=LowPass(smoothing = 5.0)
+                            )
+                    await player.add_filter(filter, label = "Low")
             else:
                 player = interaction.guild.voice_client
 
@@ -406,6 +412,15 @@ class music(commands.Cog):
         guilds = self.bot.guilds
         view = self.music_info_server_select(guilds, track_queues=self.track_queues, interaction_list = self.interaction_list, node_pools = self.node_pools)
         await interaction.response.send_message(view=view) 
+    
+    @nextcord.slash_command(guild_ids=[TESTING_GUILD_ID], description="LOW")
+    async def music_low(self, interaction: Interaction, mode : str = SlashOption(description="Выберите режим (LOW - по умолчанию)", choices= ["HIGH", "LOW"])):
+        global LOW
+        if mode == "HIGH":
+            LOW = False
+        else:
+            LOW = True
+        await interaction.response.send_message(f"LOW - {LOW}")
 
     class music_info_server_select(nextcord.ui.View):
         def __init__(self, guilds, track_queues, interaction_list, node_pools):
