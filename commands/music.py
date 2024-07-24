@@ -4,7 +4,7 @@ from nextcord import Interaction, SlashOption
 from nextcord.ext import commands, application_checks
 import asyncio
 
-# 09.06.2024
+# 24.07.2024
 # V1.0
 LOW = True
 TESTING_GUILD_ID = 1089166037934669966 # Lucy BOT
@@ -153,7 +153,9 @@ class music(commands.Cog):
                                 volume=0.5,
                                 low_pass=LowPass(smoothing = 5.0)
                             )
-                    await player.add_filter(filter, label = "Low")
+                else:
+                    filter = Filter(volume=0.5)
+                await player.add_filter(filter, label = "Low")
             else:
                 player = interaction.guild.voice_client
 
