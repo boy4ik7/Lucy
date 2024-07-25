@@ -4,11 +4,12 @@ from nextcord import Interaction, SlashOption
 from nextcord.ext import commands, application_checks
 import asyncio
 
-# 24.07.2024
-# V1.0
+# 25.07.2024
+# V1.1
 LOW = True
 TESTING_GUILD_ID = 1089166037934669966 # Lucy BOT
-node_pools = {}       
+#node_pools = {}
+node_pool = None
 
 
 class music(commands.Cog):
@@ -132,6 +133,7 @@ class music(commands.Cog):
         voice_state = interaction.user.voice
         if voice_state is not None and voice_state.channel is not None:
             guild_id = interaction.guild.id
+            """
             node_pool = self.node_pools.get(guild_id)
 
             if node_pool is None:
@@ -144,7 +146,7 @@ class music(commands.Cog):
                 )
                 self.node_pools[guild_id] = node_pool
                 node_pool = self.node_pools.get(guild_id) 
-
+            """
             if not interaction.guild.voice_client: 
                 player = await voice_state.channel.connect(cls=Player)
                 await player.guild.change_voice_state(channel=voice_state.channel, self_deaf=True)
@@ -164,7 +166,6 @@ class music(commands.Cog):
             if not tracks:
                 return await interaction.followup.send("Не найдено.")
 
-            guild_id = interaction.guild.id
             if guild_id not in self.track_queues:
                 self.track_queues[guild_id] = []
                 self.interaction_list[guild_id] = []
@@ -203,11 +204,11 @@ class music(commands.Cog):
                 await player.pause()
                 await player.disconnect()
                 guild_id = interaction.guild.id
-                node_pool = self.node_pools.pop(guild_id) 
-                await node_pool.close()
-                if guild_id in self.track_queues and self.track_queues[guild_id]:
-                    self.track_queues[guild_id].clear()
-                    self.interaction_list[guild_id].clear()
+                #node_pool = self.node_pools.pop(guild_id) 
+                #await node_pool.close()
+                #if guild_id in self.track_queues and self.track_queues[guild_id]:
+                self.track_queues[guild_id].clear()
+                self.interaction_list[guild_id].clear()
             else:
                 await interaction.followup.send("Бот не находится в голосовом канале.", ephemeral=True)
         else:
@@ -328,18 +329,38 @@ class music(commands.Cog):
             min = x + min
         time = str(min) + ":" + str(sec) 
         return time
-
+    # Бота вышвырнули из канала
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        if member == self.bot.user and before.channel and not after.channel:
+            guild_id = before.channel.guild.id
+            self.track_queues[guild_id].clear()
+            self.interaction_list[guild_id].clear()
+    # Использую один для всех, ибо серв картошка
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print("mysic.py - Запуск узла...")
+        global node_pool
+        node_pool = NodePool(self.bot)
+        await node_pool.create_node(
+            host="127.0.0.1",
+            port=2333,
+            label="NODE_1",
+            password="youshallnotpass",
+        )
+        print("mysic.py - Узел запущен.")
+    # Трэк застрял
     @commands.Cog.listener()            
     async def on_track_stuck(self, event):
         guild_id = event.player.guild.id
         interaction = self.interaction_list[guild_id].pop(0)#self.interaction_list[guild_id][0]
         await self.skip_track(interaction=interaction)
         await interaction.channel.send("Трэк завис, пропускаем...")
-
+    # Трэк закончился
     @commands.Cog.listener()
     async def on_track_end(self, event):
         await self.start_next_track(event.player, event.player.guild.id)
-
+    # Трэк начался
     @commands.Cog.listener()
     async def on_track_start(self, event):
         guild_id = event.player.guild.id
@@ -378,43 +399,43 @@ class music(commands.Cog):
                 self.track_queues[guild_id].clear()
                 self.interaction_list[guild_id].clear()      
         #print('info \n',name, url, length, time, artwork_url)
-
+    # Изменить очередь
     @nextcord.slash_command(description="Изменить порядок плейлиста")
     @application_checks.guild_only()
     async def queue(self, interaction: Interaction, moving_position: int = SlashOption(description="Что переместить?"), position : int = SlashOption(description="На какое место переместить? (1 поумолчанию)", required = False, default=1)):
         await self.queue_playlist(interaction, position, moving_position)
-
+    # Пауза/продолжить
     @nextcord.slash_command(description="Продолжить/Пауза")
     @application_checks.guild_only()
     async def resume_pause(self, interaction: Interaction):
         await self.resume_pause_track(interaction)
-
+    # Плей
     @nextcord.slash_command(description="Воспроизвести музыку с YouTube")
     @application_checks.guild_only()
     async def play(self, interaction: Interaction, query: str = SlashOption(description="Запрос или ссылка на YouTube")):
         await self.add_track(interaction, query)
-
+    # Скип
     @nextcord.slash_command(description="Пропустить трек")
     @application_checks.guild_only()
     async def skip(self, interaction: Interaction):
         await self.skip_track(interaction)
-
+    # Стоп
     @nextcord.slash_command(description="Остановить музыку")
     @application_checks.guild_only()
     async def stop(self, interaction: Interaction):
         await self.stop_music(interaction)
-
+    # Очередь
     @nextcord.slash_command(description="Посмотреть список воспроизведения")
     @application_checks.guild_only()
     async def playlist(self, interaction: Interaction):
         await self.show_playlist(interaction)
-
+    # Просмотр фигни
     @nextcord.slash_command(guild_ids=[TESTING_GUILD_ID], description="Команда отдалки")
     async def music_info(self, interaction: Interaction):
         guilds = self.bot.guilds
         view = self.music_info_server_select(guilds, track_queues=self.track_queues, interaction_list = self.interaction_list, node_pools = self.node_pools)
         await interaction.response.send_message(view=view) 
-    
+    # Отключение фильтра, чтобы снизить нагрузку на картоху, можете выключить на 9 строке заменив на LOW = False
     @nextcord.slash_command(guild_ids=[TESTING_GUILD_ID], description="LOW")
     async def music_low(self, interaction: Interaction, mode : str = SlashOption(description="Выберите режим (LOW - по умолчанию)", choices= ["HIGH", "LOW"])):
         global LOW
@@ -478,6 +499,13 @@ class music(commands.Cog):
             text += skobki
             await select.channel.send(text)
             await select.channel.send(text2)
+            global node_pool
+            if node_pool is not None:
+                node_info = "Узел есть"
+            else:
+                node_info = "Узла нет"
+            await select.channel.send(f"```{node_info}```")
+            '''
             node_info = []
             for guild_id, node_pool in self.node_pools.items():
                 for node in node_pool.nodes:
@@ -486,6 +514,7 @@ class music(commands.Cog):
                 await select.channel.send("```Нет активных узлов.```")
             else:
                 await select.channel.send("```"+"\n".join(node_info)+"```")
+            '''
 
 def setup(bot):
     bot.add_cog(music(bot))
