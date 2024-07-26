@@ -6,7 +6,7 @@ import asyncio
 
 # 25.07.2024
 # V1.1
-LOW = False
+LOW = True
 TESTING_GUILD_ID = 1089166037934669966 # Lucy BOT
 #node_pools = {}
 node_pool = None
@@ -153,7 +153,7 @@ class music(commands.Cog):
                 if LOW is True:
                     filter = Filter(#timescale = Timescale(speed = 1.0, pitch=1.0, rate=1.0),
                                 volume=0.5,
-                                low_pass=LowPass(smoothing = 10.0)
+                                low_pass=LowPass(smoothing = 5.0)
                             )
                 else:
                     filter = Filter(volume=0.5)
@@ -437,7 +437,7 @@ class music(commands.Cog):
         await interaction.response.send_message(view=view) 
     # Отключение фильтра, чтобы снизить нагрузку на картоху, можете выключить на 9 строке заменив на LOW = False
     @nextcord.slash_command(guild_ids=[TESTING_GUILD_ID], description="LOW")
-    async def music_low(self, interaction: Interaction, mode : str = SlashOption(description="Выберите режим (HIGH - по умолчанию)", choices= ["HIGH", "LOW"])):
+    async def music_low(self, interaction: Interaction, mode : str = SlashOption(description="Выберите режим (LOW - по умолчанию)", choices= ["HIGH", "LOW"])):
         global LOW
         if mode == "HIGH":
             LOW = False
